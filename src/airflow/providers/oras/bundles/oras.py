@@ -9,15 +9,11 @@ import time
 from pathlib import Path
 from typing import Mapping, Sequence
 
-try:
-    from airflow.dag_bundles.base import DagBundle as DagBundleBase
-except ImportError:  # pragma: no cover - fallback for older Airflow naming
-    from airflow.dag_bundles.base import BaseDagBundle as DagBundleBase
-
+from airflow.dag_processing.bundles.base import BaseDagBundle
 from airflow.exceptions import AirflowException
 
 
-class OrasDagBundle(DagBundleBase):
+class OrasDagBundle(BaseDagBundle):
     """Materialize DAGs from an OCI registry using ORAS."""
 
     def __init__(self, name: str, config: Mapping[str, object]):

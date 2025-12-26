@@ -10,13 +10,12 @@ def get_provider_info() -> dict:
     return {
         "package-name": "apache-airflow-providers-oras",
         "name": "ORAS",
-        "description": "DAG bundle backend for ORAS/OCI registries.",
+        "description": "[ORAS](https://oras.land/) - OCI Registry As Storage.",
         "versions": [__version__],
         "integrations": [],
         "hooks": [],
         "operators": [],
         "sensors": [],
-        "asset-uris": [],
         "connection-types": [],
         "extra-links": [],
         "dag-bundles": [

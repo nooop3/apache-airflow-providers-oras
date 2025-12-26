@@ -42,8 +42,10 @@ def _install_fake_airflow() -> None:
 
     exceptions.AirflowException = AirflowException
 
-    dag_bundles = types.ModuleType("airflow.dag_bundles")
-    base = types.ModuleType("airflow.dag_bundles.base")
+    # Mock dag_processing.bundles.base
+    dag_processing = types.ModuleType("airflow.dag_processing")
+    bundles = types.ModuleType("airflow.dag_processing.bundles")
+    base = types.ModuleType("airflow.dag_processing.bundles.base")
 
     class FakeDagBundle:
         def __init__(self, name, config):
@@ -53,17 +55,18 @@ def _install_fake_airflow() -> None:
 
             self.log = logging.getLogger("fake")
 
-    base.DagBundle = FakeDagBundle
     base.BaseDagBundle = FakeDagBundle
-    dag_bundles.base = base
+    bundles.base = base
+    dag_processing.bundles = bundles
 
-    airflow.dag_bundles = dag_bundles
+    airflow.dag_processing = dag_processing
     airflow.exceptions = exceptions
 
     sys.modules["airflow"] = airflow
     sys.modules["airflow.exceptions"] = exceptions
-    sys.modules["airflow.dag_bundles"] = dag_bundles
-    sys.modules["airflow.dag_bundles.base"] = base
+    sys.modules["airflow.dag_processing"] = dag_processing
+    sys.modules["airflow.dag_processing.bundles"] = bundles
+    sys.modules["airflow.dag_processing.bundles.base"] = base
 
 
 _install_fake_airflow()

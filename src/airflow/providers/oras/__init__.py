@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import packaging.version
 
-from airflow import __version__ as airflow_version
+from airflow import __version__ as airflow_version  # type: ignore[reportAttributeAccessIssue]
 from airflow.providers.oras.__version__ import __version__
 
 __all__ = ["__version__"]
