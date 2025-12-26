@@ -42,6 +42,25 @@ def _install_fake_airflow() -> None:
 
     exceptions.AirflowException = AirflowException
 
+    # Mock structlog
+    structlog = types.ModuleType("structlog")
+    
+    class MockLogger:
+        def bind(self, **kwargs):
+            return self
+
+        def info(self, *args, **kwargs):
+            pass
+
+        def warning(self, *args, **kwargs):
+            pass
+
+    def get_logger(name):
+        return MockLogger()
+
+    structlog.get_logger = get_logger
+    sys.modules["structlog"] = structlog
+
     # Mock dag_processing.bundles.base
     dag_processing = types.ModuleType("airflow.dag_processing")
     bundles = types.ModuleType("airflow.dag_processing.bundles")
@@ -54,9 +73,6 @@ def _install_fake_airflow() -> None:
             # Mimic BaseDagBundle calculation (simplified for test)
             airflow_home = os.environ.get("AIRFLOW_HOME", os.path.expanduser("~/airflow"))
             self.base_dir = Path(airflow_home) / "dag_bundles" / self.name
-            import logging
-
-            self.log = logging.getLogger("fake")
 
     base.BaseDagBundle = FakeDagBundle
     bundles.base = base

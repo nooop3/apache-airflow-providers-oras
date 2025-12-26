@@ -9,8 +9,12 @@ import time
 from pathlib import Path
 from typing import Mapping, Sequence
 
+import structlog
+
 from airflow.dag_processing.bundles.base import BaseDagBundle
 from airflow.exceptions import AirflowException
+
+log = structlog.get_logger(__name__)
 
 
 class OrasDagBundle(BaseDagBundle):
@@ -34,6 +38,8 @@ class OrasDagBundle(BaseDagBundle):
         self.env = env or {}
         self.max_retries = max_retries
         self.retry_delay = retry_delay
+
+        self.log = log.bind(bundle_name=self.name)
 
         self._validate_oras_cmd()
 
@@ -62,7 +68,7 @@ class OrasDagBundle(BaseDagBundle):
         env = os.environ.copy()
         env.update(self.env)
 
-        self.log.info("Pulling ORAS bundle into %s", bundle_path)
+        self.log.info("Pulling ORAS bundle", path=bundle_path)
         self._run_with_retries(command, env)
 
     def _build_pull_command(self, output_dir: Path) -> list[str]:
@@ -93,10 +99,10 @@ class OrasDagBundle(BaseDagBundle):
             except subprocess.CalledProcessError as exc:
                 attempt += 1
                 self.log.warning(
-                    "ORAS pull failed with exit code %s (attempt %s/%s).",
-                    exc.returncode,
-                    attempt,
-                    self._max_retries + 1,
+                    "ORAS pull failed",
+                    exit_code=exc.returncode,
+                    attempt=attempt,
+                    max_retries=self.max_retries + 1,
                 )
                 if attempt > self.max_retries:
                     raise AirflowException("ORAS pull failed after retries.") from exc
