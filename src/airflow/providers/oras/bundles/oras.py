@@ -16,20 +16,27 @@ from airflow.exceptions import AirflowException
 class OrasDagBundle(BaseDagBundle):
     """Materialize DAGs from an OCI registry using ORAS."""
 
-    def __init__(self, name: str, config: Mapping[str, object], version: str | None = None):
-        super().__init__(name, config, version)
-        self._config = dict(config)
-        self._image = self._require_str("image")
-        self._oras_cmd = self._coerce_str(self._config.get("oras_cmd", "oras"), "oras_cmd")
-        self._pull_args = self._coerce_str_sequence(self._config.get("pull_args", []))
-        self._bundle_root = self._config.get("bundle_root")
-        self._max_retries = self._coerce_non_negative_int(
-            self._config.get("max_retries", 0), "max_retries"
-        )
-        self._retry_delay = self._coerce_non_negative_int(
-            self._config.get("retry_delay", 5), "retry_delay"
-        )
-        self._env = self._coerce_env(self._config.get("env", {}))
+    def __init__(
+        self,
+        *,
+        image: str,
+        oras_cmd: str = "oras",
+        pull_args: list[str] | None = None,
+        bundle_root: str | None = None,
+        max_retries: int = 0,
+        retry_delay: int = 5,
+        env: dict[str, str] | None = None,
+        **kwargs,
+    ):
+        super().__init__(**kwargs)
+        self.image = image
+        self.oras_cmd = oras_cmd
+        self.pull_args = pull_args or []
+        self.bundle_root = bundle_root
+        self.max_retries = max_retries
+        self.retry_delay = retry_delay
+        self.env = env or {}
+
         self._validate_oras_cmd()
 
     @property
@@ -39,13 +46,12 @@ class OrasDagBundle(BaseDagBundle):
 
     def get_current_version(self) -> str | None:
         """Return the current version of the bundle."""
-        # For now, we do not track specific versions beyond what is configured.
-        return None
+        return self.version
 
     def _validate_oras_cmd(self) -> None:
-        if not shutil.which(self._oras_cmd):
+        if not shutil.which(self.oras_cmd):
             raise AirflowException(
-                f"The command '{self._oras_cmd}' was not found. "
+                f"The command '{self.oras_cmd}' was not found. "
                 "Please ensure it is installed and in your PATH."
             )
 
@@ -56,68 +62,23 @@ class OrasDagBundle(BaseDagBundle):
 
         command = self._build_pull_command(bundle_path)
         env = os.environ.copy()
-        env.update(self._env)
+        env.update(self.env)
 
         self.log.info("Pulling ORAS bundle into %s", bundle_path)
         self._run_with_retries(command, env)
 
-    def _require_str(self, key: str) -> str:
-        value = self._config.get(key)
-        if not isinstance(value, str) or not value.strip():
-            raise AirflowException(f"Config value '{key}' must be a non-empty string.")
-        return value
-
-    @staticmethod
-    def _coerce_str(value: object, key: str) -> str:
-        if isinstance(value, str) and value.strip():
-            return value
-        raise AirflowException(f"Config value '{key}' must be a non-empty string.")
-
-    @staticmethod
-    def _coerce_str_sequence(value: object) -> list[str]:
-        if value is None:
-            return []
-        if isinstance(value, (list, tuple)):
-            if not all(isinstance(item, str) for item in value):
-                raise AirflowException("pull_args must be a list of strings.")
-            return list(value)
-        raise AirflowException("pull_args must be a list of strings.")
-
-    @staticmethod
-    def _coerce_env(value: object) -> dict[str, str]:
-        if value is None:
-            return {}
-        if isinstance(value, dict):
-            env = {}
-            for key, val in value.items():
-                if not isinstance(key, str) or not isinstance(val, str):
-                    raise AirflowException("env must be a mapping of string keys to string values.")
-                env[key] = val
-            return env
-        raise AirflowException("env must be a mapping of string keys to string values.")
-
-    @staticmethod
-    def _coerce_non_negative_int(value: object, key: str) -> int:
-        try:
-            parsed = int(value)
-        except (TypeError, ValueError) as exc:
-            raise AirflowException(f"Config value '{key}' must be an integer.") from exc
-        if parsed < 0:
-            raise AirflowException(f"Config value '{key}' must be non-negative.")
-        return parsed
-
     def _resolve_bundle_path(self) -> Path:
-        if self._bundle_root:
-            root = Path(str(self._bundle_root))
+        if self.bundle_root:
+            root = Path(self.bundle_root)
         else:
             airflow_home = os.environ.get("AIRFLOW_HOME", os.path.expanduser("~/airflow"))
             root = Path(airflow_home) / "dag_bundles" / "oras"
         return root / self.name
 
     def _build_pull_command(self, output_dir: Path) -> list[str]:
-        command = [str(self._oras_cmd), "pull"]
-        command.extend(self._pull_args)
-        command.extend([self._image, "--output", str(output_dir)])
+        command = [self.oras_cmd, "pull"]
+        command.extend(self.pull_args)
+        command.extend([self.image, "--output", str(output_dir)])
         return command
 
     @staticmethod
@@ -147,6 +108,8 @@ class OrasDagBundle(BaseDagBundle):
                     attempt,
                     self._max_retries + 1,
                 )
-                if attempt > self._max_retries:
+                if attempt > self.max_retries:
                     raise AirflowException("ORAS pull failed after retries.") from exc
-                time.sleep(self._retry_delay)
+                time.sleep(self.retry_delay)
+
+

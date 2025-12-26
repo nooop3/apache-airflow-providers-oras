@@ -48,10 +48,9 @@ def _install_fake_airflow() -> None:
     base = types.ModuleType("airflow.dag_processing.bundles.base")
 
     class FakeDagBundle:
-        def __init__(self, name, config, version=None):
-            self.name = name
-            self.config = config
-            self.version = version
+        def __init__(self, **kwargs):
+            self.name = kwargs.get("name")
+            self.version = kwargs.get("version")
             import logging
 
             self.log = logging.getLogger("fake")
@@ -89,14 +88,14 @@ class TestOrasDagBundle(unittest.TestCase):
         with self.assertRaisesRegex(
             Exception, "The command 'oras' was not found"
         ):  # AirflowException is strictly checked in some envs
-            OrasDagBundle("oras_test", {"image": "example.com/demo:1"})
+            OrasDagBundle(name="oras_test", image="example.com/demo:1")
 
     def test_path_property(self):
         with TemporaryDirectory() as tmp:
             old_home = os.environ.get("AIRFLOW_HOME")
             os.environ["AIRFLOW_HOME"] = tmp
             try:
-                bundle = OrasDagBundle("oras_test", {"image": "example.com/demo:1"})
+                bundle = OrasDagBundle(name="oras_test", image="example.com/demo:1")
                 expected = Path(tmp) / "dag_bundles" / "oras" / "oras_test"
                 self.assertEqual(bundle.path, expected)
             finally:
@@ -107,8 +106,9 @@ class TestOrasDagBundle(unittest.TestCase):
 
     def test_build_pull_command(self):
         bundle = OrasDagBundle(
-            "oras_test",
-            {"image": "example.com/demo:1", "pull_args": ["--plain-http"]},
+            name="oras_test",
+            image="example.com/demo:1",
+            pull_args=["--plain-http"],
         )
         command = bundle._build_pull_command(Path("/tmp/out"))
         self.assertEqual(
@@ -121,7 +121,7 @@ class TestOrasDagBundle(unittest.TestCase):
             old_home = os.environ.get("AIRFLOW_HOME")
             os.environ["AIRFLOW_HOME"] = tmp
             try:
-                bundle = OrasDagBundle("oras_test", {"image": "example.com/demo:1"})
+                bundle = OrasDagBundle(name="oras_test", image="example.com/demo:1")
                 target = Path(tmp) / "dag_bundles" / "oras" / "oras_test"
                 target.mkdir(parents=True)
                 (target / "old.py").write_text("print('old')", encoding="ascii")
