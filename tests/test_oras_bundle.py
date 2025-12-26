@@ -44,7 +44,7 @@ def _install_fake_airflow() -> None:
 
     # Mock structlog
     structlog = types.ModuleType("structlog")
-    
+
     class MockLogger:
         def bind(self, **kwargs):
             return self
@@ -61,6 +61,21 @@ def _install_fake_airflow() -> None:
     structlog.get_logger = get_logger
     sys.modules["structlog"] = structlog
 
+    # Mock oras
+    oras = types.ModuleType("oras")
+    oras_provider = types.ModuleType("oras.provider")
+    
+    class MockRegistry:
+        def pull(self, target, outdir):
+            pass
+        def get_digest(self, target):
+            return "sha256:mockdigest"
+
+    oras_provider.Registry = MockRegistry
+    oras.provider = oras_provider
+    sys.modules["oras"] = oras
+    sys.modules["oras.provider"] = oras_provider
+
     # Mock dag_processing.bundles.base
     dag_processing = types.ModuleType("airflow.dag_processing")
     bundles = types.ModuleType("airflow.dag_processing.bundles")
@@ -73,6 +88,8 @@ def _install_fake_airflow() -> None:
             # Mimic BaseDagBundle calculation (simplified for test)
             airflow_home = os.environ.get("AIRFLOW_HOME", os.path.expanduser("~/airflow"))
             self.base_dir = Path(airflow_home) / "dag_bundles" / self.name
+            import logging
+            self.log = logging.getLogger("fake")
 
     base.BaseDagBundle = FakeDagBundle
     bundles.base = base
@@ -94,20 +111,10 @@ from airflow.providers.oras.bundles.oras import OrasDagBundle
 
 
 class TestOrasDagBundle(unittest.TestCase):
-    def setUp(self):
-        self.which_patcher = mock.patch("airflow.providers.oras.bundles.oras.shutil.which")
-        self.mock_which = self.which_patcher.start()
-        self.mock_which.return_value = "/usr/bin/oras"
 
-    def tearDown(self):
-        self.which_patcher.stop()
-
-    def test_init_raises_if_oras_not_found(self):
-        self.mock_which.return_value = None
-        with self.assertRaisesRegex(
-            Exception, "The command 'oras' was not found"
-        ):  # AirflowException is strictly checked in some envs
-            OrasDagBundle(name="oras_test", image="example.com/demo:1")
+    def test_init(self):
+        bundle = OrasDagBundle(name="oras_test", image="example.com/demo:1")
+        self.assertEqual(bundle.image, "example.com/demo:1")
 
     def test_path_property_uses_base_dir(self):
         with TemporaryDirectory() as tmp:
@@ -124,44 +131,38 @@ class TestOrasDagBundle(unittest.TestCase):
                 else:
                     os.environ["AIRFLOW_HOME"] = old_home
 
-    def test_build_pull_command(self):
-        bundle = OrasDagBundle(
-            name="oras_test",
-            image="example.com/demo:1",
-            pull_args=["--plain-http"],
-        )
-        command = bundle._build_pull_command(Path("/tmp/out"))
-        self.assertEqual(
-            command,
-            ["oras", "pull", "--plain-http", "example.com/demo:1", "--output", "/tmp/out"],
-        )
+    @mock.patch("airflow.providers.oras.bundles.oras.Registry")
+    def test_get_current_version_returns_digest(self, mock_registry_cls):
+        mock_registry = mock_registry_cls.return_value
+        mock_registry.get_digest.return_value = "sha256:12345"
+        
+        bundle = OrasDagBundle(name="oras_test", image="example.com/demo:1")
+        version = bundle.get_current_version()
+        
+        self.assertEqual(version, "sha256:12345")
+        mock_registry.get_digest.assert_called_with("example.com/demo:1")
 
-    def test_refresh_runs_oras(self):
+    @mock.patch("airflow.providers.oras.bundles.oras.Registry")
+    def test_refresh_pulls_artifact(self, mock_registry_cls):
+        mock_registry = mock_registry_cls.return_value
+        
         with TemporaryDirectory() as tmp:
             old_home = os.environ.get("AIRFLOW_HOME")
             os.environ["AIRFLOW_HOME"] = tmp
             try:
                 bundle = OrasDagBundle(name="oras_test", image="example.com/demo:1")
-                # Mimic behavior: base_dir is where we pull to
-                target = Path(tmp) / "dag_bundles" / "oras_test"
-                target.mkdir(parents=True)
-                (target / "old.py").write_text("print('old')", encoding="ascii")
-
-                with mock.patch(
-                    "airflow.providers.oras.bundles.oras.subprocess.run"
-                ) as run:
-                    run.return_value = mock.Mock(returncode=0, stdout="", stderr="")
-                    bundle.refresh()
-
-                self.assertTrue(target.exists())
-                self.assertFalse((target / "old.py").exists())
-                run.assert_called_once()
+                bundle.refresh()
+                
+                target_path = Path(tmp) / "dag_bundles" / "oras_test"
+                mock_registry.pull.assert_called_with(
+                    target="example.com/demo:1",
+                    outdir=str(target_path)
+                )
             finally:
                 if old_home is None:
                     os.environ.pop("AIRFLOW_HOME", None)
                 else:
                     os.environ["AIRFLOW_HOME"] = old_home
-
 
 if __name__ == "__main__":
     unittest.main()

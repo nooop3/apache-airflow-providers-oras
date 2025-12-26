@@ -37,27 +37,14 @@ To use the ORAS bundle backend, configure the `dag_bundles` section in `airflow.
 
 ```ini
 [dag_bundles]
-bundle_config = [
-  {
-    "name": "oras_dags",
-    "bundle_backend": "airflow.providers.oras.bundles.oras.OrasDagBundle",
-    "bundle_backend_kwargs": {
-      "image": "ghcr.io/acme/airflow-dags:latest",
-      "pull_args": ["--plain-http"],
-      "bundle_root": "/opt/airflow/dag_bundles",
-      "max_retries": 2,
-      "retry_delay": 5
-    }
-  }
-]
+my_oras_bundle = oras
 ```
 
-### Bundle backend options
+### Bundle Backend Parameters
+
+The bundle accepts the following parameters:
 
 - `image` (required): OCI reference or digest to pull.
-- `oras_cmd`: ORAS binary to execute (default: `oras`).
-- `pull_args`: List of extra ORAS `pull` flags.
-- `bundle_root`: Local root directory for bundle materialization.
 - `env`: Mapping of environment variables to pass to ORAS.
 - `max_retries`: Retry count on pull failures (default: `0`).
 - `retry_delay`: Seconds between retries (default: `5`).
