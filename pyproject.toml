@@ -10,6 +10,12 @@ readme = "README.md"
 requires-python = ">=3.9"
 dependencies = ["apache-airflow>=3.0.0"]
 
+[project.optional-dependencies]
+dev = [
+  "black>=24.0.0",
+  "ruff>=0.6.0",
+]
+
 [project.entry-points."apache_airflow_provider"]
 provider_info = "airflow.providers.oras.get_provider_info:get_provider_info"
 

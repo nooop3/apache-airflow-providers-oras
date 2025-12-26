@@ -17,8 +17,25 @@ def _install_fake_airflow() -> None:
         return
 
     airflow = types.ModuleType("airflow")
+    airflow.__version__ = "3.0.0"
     airflow.__path__ = [str(SRC_DIR / "airflow")]
     exceptions = types.ModuleType("airflow.exceptions")
+
+    # Mock packaging
+    packaging = types.ModuleType("packaging")
+    version = types.ModuleType("packaging.version")
+
+    class MockVersion:
+        def __init__(self, v_str):
+            self.base_version = v_str
+
+        def __lt__(self, other):
+            return self.base_version < other.base_version
+
+    version.parse = MockVersion
+    packaging.version = version
+    sys.modules["packaging"] = packaging
+    sys.modules["packaging.version"] = version
 
     class AirflowException(Exception):
         pass

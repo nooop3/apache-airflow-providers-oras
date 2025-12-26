@@ -67,10 +67,8 @@ bundle_config = [
 ```bash
 # Create virtual environment
 uv venv
-source .venv/bin/activate
-
-# Install dependencies
-uv pip install -r requirements-dev.txt
+uv sync --extra dev
+uv pip install -e .
 
 # Run tests
 uv run python -m unittest discover -s tests
