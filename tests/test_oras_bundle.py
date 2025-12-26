@@ -48,9 +48,10 @@ def _install_fake_airflow() -> None:
     base = types.ModuleType("airflow.dag_processing.bundles.base")
 
     class FakeDagBundle:
-        def __init__(self, name, config):
+        def __init__(self, name, config, version=None):
             self.name = name
             self.config = config
+            self.version = version
             import logging
 
             self.log = logging.getLogger("fake")
@@ -90,14 +91,14 @@ class TestOrasDagBundle(unittest.TestCase):
         ):  # AirflowException is strictly checked in some envs
             OrasDagBundle("oras_test", {"image": "example.com/demo:1"})
 
-    def test_resolve_bundle_path_defaults_to_airflow_home(self):
+    def test_path_property(self):
         with TemporaryDirectory() as tmp:
             old_home = os.environ.get("AIRFLOW_HOME")
             os.environ["AIRFLOW_HOME"] = tmp
             try:
                 bundle = OrasDagBundle("oras_test", {"image": "example.com/demo:1"})
                 expected = Path(tmp) / "dag_bundles" / "oras" / "oras_test"
-                self.assertEqual(bundle._resolve_bundle_path(), expected)
+                self.assertEqual(bundle.path, expected)
             finally:
                 if old_home is None:
                     os.environ.pop("AIRFLOW_HOME", None)
@@ -115,7 +116,7 @@ class TestOrasDagBundle(unittest.TestCase):
             ["oras", "pull", "--plain-http", "example.com/demo:1", "--output", "/tmp/out"],
         )
 
-    def test_refresh_runs_oras_and_returns_path(self):
+    def test_refresh_runs_oras(self):
         with TemporaryDirectory() as tmp:
             old_home = os.environ.get("AIRFLOW_HOME")
             os.environ["AIRFLOW_HOME"] = tmp
@@ -129,9 +130,8 @@ class TestOrasDagBundle(unittest.TestCase):
                     "airflow.providers.oras.bundles.oras.subprocess.run"
                 ) as run:
                     run.return_value = mock.Mock(returncode=0, stdout="", stderr="")
-                    result = bundle.refresh()
+                    bundle.refresh()
 
-                self.assertEqual(result, str(target))
                 self.assertTrue(target.exists())
                 self.assertFalse((target / "old.py").exists())
                 run.assert_called_once()

@@ -16,8 +16,8 @@ from airflow.exceptions import AirflowException
 class OrasDagBundle(BaseDagBundle):
     """Materialize DAGs from an OCI registry using ORAS."""
 
-    def __init__(self, name: str, config: Mapping[str, object]):
-        super().__init__(name, config)
+    def __init__(self, name: str, config: Mapping[str, object], version: str | None = None):
+        super().__init__(name, config, version)
         self._config = dict(config)
         self._image = self._require_str("image")
         self._oras_cmd = self._coerce_str(self._config.get("oras_cmd", "oras"), "oras_cmd")
@@ -32,6 +32,16 @@ class OrasDagBundle(BaseDagBundle):
         self._env = self._coerce_env(self._config.get("env", {}))
         self._validate_oras_cmd()
 
+    @property
+    def path(self) -> Path:
+        """Return the local path to the bundle."""
+        return self._resolve_bundle_path()
+
+    def get_current_version(self) -> str | None:
+        """Return the current version of the bundle."""
+        # For now, we do not track specific versions beyond what is configured.
+        return None
+
     def _validate_oras_cmd(self) -> None:
         if not shutil.which(self._oras_cmd):
             raise AirflowException(
@@ -39,9 +49,9 @@ class OrasDagBundle(BaseDagBundle):
                 "Please ensure it is installed and in your PATH."
             )
 
-    def refresh(self) -> str:
-        """Pull the OCI artifact and return the local DAG folder path."""
-        bundle_path = self._resolve_bundle_path()
+    def refresh(self) -> None:
+        """Pull the OCI artifact to the local DAG folder."""
+        bundle_path = self.path
         self._prepare_directory(bundle_path)
 
         command = self._build_pull_command(bundle_path)
@@ -50,8 +60,6 @@ class OrasDagBundle(BaseDagBundle):
 
         self.log.info("Pulling ORAS bundle into %s", bundle_path)
         self._run_with_retries(command, env)
-
-        return str(bundle_path)
 
     def _require_str(self, key: str) -> str:
         value = self._config.get(key)
