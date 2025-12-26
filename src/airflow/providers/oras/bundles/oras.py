@@ -34,6 +34,14 @@ class OrasDagBundle(DagBundleBase):
             self._config.get("retry_delay", 5), "retry_delay"
         )
         self._env = self._coerce_env(self._config.get("env", {}))
+        self._validate_oras_cmd()
+
+    def _validate_oras_cmd(self) -> None:
+        if not shutil.which(self._oras_cmd):
+            raise AirflowException(
+                f"The command '{self._oras_cmd}' was not found. "
+                "Please ensure it is installed and in your PATH."
+            )
 
     def refresh(self) -> str:
         """Pull the OCI artifact and return the local DAG folder path."""

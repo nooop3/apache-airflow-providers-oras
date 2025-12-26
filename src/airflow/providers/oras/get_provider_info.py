@@ -19,4 +19,10 @@ def get_provider_info() -> dict:
         "asset-uris": [],
         "connection-types": [],
         "extra-links": [],
+        "dag-bundles": [
+            {
+                "name": "oras",
+                "class-name": "airflow.providers.oras.bundles.oras.OrasDagBundle",
+            }
+        ],
     }

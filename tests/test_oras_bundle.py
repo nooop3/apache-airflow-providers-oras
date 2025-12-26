@@ -55,6 +55,21 @@ from airflow.providers.oras.bundles.oras import OrasDagBundle
 
 
 class TestOrasDagBundle(unittest.TestCase):
+    def setUp(self):
+        self.which_patcher = mock.patch("airflow.providers.oras.bundles.oras.shutil.which")
+        self.mock_which = self.which_patcher.start()
+        self.mock_which.return_value = "/usr/bin/oras"
+
+    def tearDown(self):
+        self.which_patcher.stop()
+
+    def test_init_raises_if_oras_not_found(self):
+        self.mock_which.return_value = None
+        with self.assertRaisesRegex(
+            Exception, "The command 'oras' was not found"
+        ):  # AirflowException is strictly checked in some envs
+            OrasDagBundle("oras_test", {"image": "example.com/demo:1"})
+
     def test_resolve_bundle_path_defaults_to_airflow_home(self):
         with TemporaryDirectory() as tmp:
             old_home = os.environ.get("AIRFLOW_HOME")
