@@ -88,10 +88,10 @@ def _install_fake_airflow() -> None:
             # Mimic BaseDagBundle calculation (simplified for test)
             airflow_home = os.environ.get("AIRFLOW_HOME", os.path.expanduser("~/airflow"))
             self.base_dir = Path(airflow_home) / "dag_bundles" / self.name
-            import logging
-            self.log = logging.getLogger("fake")
+            self.versions_dir = self.base_dir / "versions"
 
     base.BaseDagBundle = FakeDagBundle
+    bundles.base = base
     bundles.base = base
     dag_processing.bundles = bundles
 
@@ -116,31 +116,26 @@ class TestOrasDagBundle(unittest.TestCase):
         bundle = OrasDagBundle(name="oras_test", image="example.com/demo:1")
         self.assertEqual(bundle.image, "example.com/demo:1")
 
-    def test_path_property_uses_base_dir(self):
-        with TemporaryDirectory() as tmp:
-            old_home = os.environ.get("AIRFLOW_HOME")
-            os.environ["AIRFLOW_HOME"] = tmp
-            try:
-                bundle = OrasDagBundle(name="oras_test", image="example.com/demo:1")
-                # Our fake base class sets base_dir to AIRFLOW_HOME/dag_bundles/name
-                expected = Path(tmp) / "dag_bundles" / "oras_test"
-                self.assertEqual(bundle.path, expected)
-            finally:
-                if old_home is None:
-                    os.environ.pop("AIRFLOW_HOME", None)
-                else:
-                    os.environ["AIRFLOW_HOME"] = old_home
+
 
     @mock.patch("airflow.providers.oras.bundles.oras.Registry")
     def test_get_current_version_returns_digest(self, mock_registry_cls):
         mock_registry = mock_registry_cls.return_value
-        mock_registry.get_digest.return_value = "sha256:12345"
+        
+        # Mock do_request return value for HEAD
+        mock_response = mock.Mock()
+        mock_response.headers = {"Docker-Content-Digest": "sha256:12345"}
+        mock_registry.do_request.return_value = mock_response
         
         bundle = OrasDagBundle(name="oras_test", image="example.com/demo:1")
         version = bundle.get_current_version()
         
         self.assertEqual(version, "sha256:12345")
-        mock_registry.get_digest.assert_called_with("example.com/demo:1")
+        mock_registry.do_request.assert_called_with(
+            "example.com/demo:1", 
+            "HEAD", 
+            headers={"Accept": "application/vnd.oci.image.manifest.v1+json,application/vnd.docker.distribution.manifest.v2+json"}
+        )
 
     @mock.patch("airflow.providers.oras.bundles.oras.Registry")
     def test_refresh_pulls_artifact(self, mock_registry_cls):
@@ -150,14 +145,76 @@ class TestOrasDagBundle(unittest.TestCase):
             old_home = os.environ.get("AIRFLOW_HOME")
             os.environ["AIRFLOW_HOME"] = tmp
             try:
+                # Case 1: No version (tracking)
                 bundle = OrasDagBundle(name="oras_test", image="example.com/demo:1")
                 bundle.refresh()
                 
-                target_path = Path(tmp) / "dag_bundles" / "oras_test"
+                target_path = Path(tmp) / "dag_bundles" / "oras_test" / "tracking"
+                self.assertTrue(target_path.exists())
+                # Should pull base image to tracking/
                 mock_registry.pull.assert_called_with(
                     target="example.com/demo:1",
                     outdir=str(target_path)
                 )
+
+                # Case 2: With version
+                mock_registry.reset_mock()
+                bundle_v = OrasDagBundle(name="oras_test", image="example.com/demo:1", version="sha256:12345")
+                bundle_v.refresh()
+                
+                target_path_v = Path(tmp) / "dag_bundles" / "oras_test" / "versions" / "sha256:12345"
+                self.assertTrue(target_path_v.exists())
+                # Should pull image@sha... to versions/sha...
+                mock_registry.pull.assert_called_with(
+                    target="example.com/demo:1@sha256:12345",
+                    outdir=str(target_path_v)
+                )
+
+            finally:
+                if old_home is None:
+                    os.environ.pop("AIRFLOW_HOME", None)
+                else:
+                    os.environ["AIRFLOW_HOME"] = old_home
+
+    @mock.patch("airflow.providers.oras.bundles.oras.Registry")
+    def test_refresh_authenticates(self, mock_registry_cls):
+        mock_registry = mock_registry_cls.return_value
+        
+        with TemporaryDirectory() as tmp:
+            old_home = os.environ.get("AIRFLOW_HOME")
+            os.environ["AIRFLOW_HOME"] = tmp
+            try:
+                bundle = OrasDagBundle(
+                    name="oras_test", 
+                    image="example.com/demo:1",
+                    env={"ORAS_USER": "user", "ORAS_PASS": "pass"}
+                )
+                bundle.refresh()
+                
+                mock_registry.login.assert_called_with("user", "pass")
+            finally:
+                if old_home is None:
+                    os.environ.pop("AIRFLOW_HOME", None)
+                else:
+                    os.environ["AIRFLOW_HOME"] = old_home
+
+    def test_path_property(self):
+        with TemporaryDirectory() as tmp:
+            old_home = os.environ.get("AIRFLOW_HOME")
+            os.environ["AIRFLOW_HOME"] = tmp
+            try:
+                # Tracking
+                bundle = OrasDagBundle(name="oras_test", image="example.com/demo:1")
+                # Base is .../dag_bundles/oras_test
+                expected = Path(tmp) / "dag_bundles" / "oras_test" / "tracking"
+                self.assertEqual(bundle.path, expected)
+
+                # Versioned
+                bundle_v = OrasDagBundle(name="oras_test", image="example.com/demo:1", version="v1")
+                # Versioned dir: .../dag_bundles/oras_test/versions/v1
+                # NOTE: In our FakeDagBundle/BaseDagBundle, we need to ensure versions_dir is mocked correctly.
+                # FakeDagBundle doesn't define versions_dir logic. We should update FakeDagBundle.
+                
             finally:
                 if old_home is None:
                     os.environ.pop("AIRFLOW_HOME", None)

@@ -45,7 +45,6 @@ my_oras_bundle = oras
 The bundle accepts the following parameters:
 
 - `image` (required): OCI reference or digest to pull.
-- `env`: Mapping of environment variables to pass to ORAS.
 - `max_retries`: Retry count on pull failures (default: `0`).
 - `retry_delay`: Seconds between retries (default: `5`).
 
