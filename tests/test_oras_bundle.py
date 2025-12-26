@@ -51,6 +51,9 @@ def _install_fake_airflow() -> None:
         def __init__(self, **kwargs):
             self.name = kwargs.get("name")
             self.version = kwargs.get("version")
+            # Mimic BaseDagBundle calculation (simplified for test)
+            airflow_home = os.environ.get("AIRFLOW_HOME", os.path.expanduser("~/airflow"))
+            self.base_dir = Path(airflow_home) / "dag_bundles" / self.name
             import logging
 
             self.log = logging.getLogger("fake")
@@ -90,13 +93,14 @@ class TestOrasDagBundle(unittest.TestCase):
         ):  # AirflowException is strictly checked in some envs
             OrasDagBundle(name="oras_test", image="example.com/demo:1")
 
-    def test_path_property(self):
+    def test_path_property_uses_base_dir(self):
         with TemporaryDirectory() as tmp:
             old_home = os.environ.get("AIRFLOW_HOME")
             os.environ["AIRFLOW_HOME"] = tmp
             try:
                 bundle = OrasDagBundle(name="oras_test", image="example.com/demo:1")
-                expected = Path(tmp) / "dag_bundles" / "oras" / "oras_test"
+                # Our fake base class sets base_dir to AIRFLOW_HOME/dag_bundles/name
+                expected = Path(tmp) / "dag_bundles" / "oras_test"
                 self.assertEqual(bundle.path, expected)
             finally:
                 if old_home is None:
@@ -122,7 +126,8 @@ class TestOrasDagBundle(unittest.TestCase):
             os.environ["AIRFLOW_HOME"] = tmp
             try:
                 bundle = OrasDagBundle(name="oras_test", image="example.com/demo:1")
-                target = Path(tmp) / "dag_bundles" / "oras" / "oras_test"
+                # Mimic behavior: base_dir is where we pull to
+                target = Path(tmp) / "dag_bundles" / "oras_test"
                 target.mkdir(parents=True)
                 (target / "old.py").write_text("print('old')", encoding="ascii")
 

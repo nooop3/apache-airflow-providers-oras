@@ -22,7 +22,6 @@ class OrasDagBundle(BaseDagBundle):
         image: str,
         oras_cmd: str = "oras",
         pull_args: list[str] | None = None,
-        bundle_root: str | None = None,
         max_retries: int = 0,
         retry_delay: int = 5,
         env: dict[str, str] | None = None,
@@ -32,17 +31,16 @@ class OrasDagBundle(BaseDagBundle):
         self.image = image
         self.oras_cmd = oras_cmd
         self.pull_args = pull_args or []
-        self.bundle_root = bundle_root
+        self.env = env or {}
         self.max_retries = max_retries
         self.retry_delay = retry_delay
-        self.env = env or {}
 
         self._validate_oras_cmd()
 
     @property
     def path(self) -> Path:
         """Return the local path to the bundle."""
-        return self._resolve_bundle_path()
+        return self.base_dir
 
     def get_current_version(self) -> str | None:
         """Return the current version of the bundle."""
@@ -66,14 +64,6 @@ class OrasDagBundle(BaseDagBundle):
 
         self.log.info("Pulling ORAS bundle into %s", bundle_path)
         self._run_with_retries(command, env)
-
-    def _resolve_bundle_path(self) -> Path:
-        if self.bundle_root:
-            root = Path(self.bundle_root)
-        else:
-            airflow_home = os.environ.get("AIRFLOW_HOME", os.path.expanduser("~/airflow"))
-            root = Path(airflow_home) / "dag_bundles" / "oras"
-        return root / self.name
 
     def _build_pull_command(self, output_dir: Path) -> list[str]:
         command = [self.oras_cmd, "pull"]
@@ -111,5 +101,3 @@ class OrasDagBundle(BaseDagBundle):
                 if attempt > self.max_retries:
                     raise AirflowException("ORAS pull failed after retries.") from exc
                 time.sleep(self.retry_delay)
-
-
