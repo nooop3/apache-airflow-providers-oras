@@ -1,37 +1,37 @@
-# Airflow Provider for ORAS
+# Apache Airflow Provider for ORAS
 
-This provider adds an Airflow DAG bundle backend that pulls DAGs from an OCI registry
-using the ORAS CLI.
+Release: `0.1.0`
 
-## Requirements
+[ORAS](https://oras.land/) - OCI Registry As Storage.
 
-- Apache Airflow 3.x
-- ORAS CLI available on the PATH of your scheduler/triggerer
+## Provider package
 
-## Install
+This is a provider package for `oras` provider. All classes for this provider package
+are in `airflow.providers.oras` python package.
+
+## Installation
+
+You can install this package on top of an existing Airflow installation (see `Requirements` below
+for the minimum Airflow version supported) via:
 
 ```bash
 pip install apache-airflow-providers-oras
 ```
 
-## Local development with uv
+## Requirements
 
-```bash
-uv venv
-uv pip install -r requirements-dev.txt
-```
-
-Run tests:
-
-```bash
-uv run python -m unittest discover -s tests
-```
+| Package | Version required |
+|---------|------------------|
+| `apache-airflow` | `>=3.0.0` |
+| `oras` (CLI) | Available on PATH |
 
 ## Configuration
 
 This provider registers `airflow.providers.oras.bundles.oras.OrasDagBundle`.
-The DAG bundle config is a JSON list; each entry defines a bundle name and backend
-configuration.
+
+### DAG Bundles
+
+To use the ORAS bundle backend, configure the `dag_bundles` section in `airflow.cfg` or via environment variables.
 
 `airflow.cfg` example:
 
@@ -52,16 +52,6 @@ bundle_config = [
 ]
 ```
 
-Helm values example:
-
-```yaml
-env:
-  - name: AIRFLOW__DAG_BUNDLES__BUNDLE_CONFIG
-    value: >
-      [{"name":"oras_dags","bundle_backend":"airflow.providers.oras.bundles.oras.OrasDagBundle",
-      "bundle_backend_kwargs":{"image":"ghcr.io/acme/airflow-dags:latest","pull_args":["--plain-http"]}}]
-```
-
 ### Bundle backend options
 
 - `image` (required): OCI reference or digest to pull.
@@ -72,7 +62,16 @@ env:
 - `max_retries`: Retry count on pull failures (default: `0`).
 - `retry_delay`: Seconds between retries (default: `5`).
 
-## Security Notes
+## Local development
 
-- Credentials are supplied via ORAS-compatible auth (env vars, helpers, or IRSA).
-- ORAS output is captured; only the first line of errors is logged to avoid leaking secrets.
+```bash
+# Create virtual environment
+uv venv
+source .venv/bin/activate
+
+# Install dependencies
+uv pip install -r requirements-dev.txt
+
+# Run tests
+uv run python -m unittest discover -s tests
+```
