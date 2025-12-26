@@ -14,6 +14,19 @@ using the ORAS CLI.
 pip install apache-airflow-providers-oras
 ```
 
+## Local development with uv
+
+```bash
+uv venv
+uv pip install -r requirements-dev.txt
+```
+
+Run tests:
+
+```bash
+uv run python -m unittest discover -s tests
+```
+
 ## Configuration
 
 This provider registers `airflow.providers.oras.bundles.oras.OrasDagBundle`.

@@ -79,6 +79,9 @@ docs/_build/
 .pybuilder/
 target/
 
+# uv
+uv.lock
+
 # Jupyter Notebook
 .ipynb_checkpoints
 
