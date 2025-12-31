@@ -119,23 +119,11 @@ class TestOrasDagBundle(unittest.TestCase):
 
 
     @mock.patch("airflow.providers.oras.bundles.oras.Registry")
-    def test_get_current_version_returns_digest(self, mock_registry_cls):
-        mock_registry = mock_registry_cls.return_value
-        
-        # Mock do_request return value for HEAD
-        mock_response = mock.Mock()
-        mock_response.headers = {"Docker-Content-Digest": "sha256:12345"}
-        mock_registry.do_request.return_value = mock_response
-        
+    def test_get_current_version_returns_none(self, mock_registry_cls):
+        """Versioning is not supported, so get_current_version should return None."""
         bundle = OrasDagBundle(name="oras_test", image="example.com/demo:1")
         version = bundle.get_current_version()
-        
-        self.assertEqual(version, "sha256:12345")
-        mock_registry.do_request.assert_called_with(
-            "example.com/demo:1", 
-            "HEAD", 
-            headers={"Accept": "application/vnd.oci.image.manifest.v1+json,application/vnd.docker.distribution.manifest.v2+json"}
-        )
+        self.assertIsNone(version)
 
     @mock.patch("airflow.providers.oras.bundles.oras.Registry")
     def test_refresh_pulls_artifact(self, mock_registry_cls):
@@ -157,18 +145,11 @@ class TestOrasDagBundle(unittest.TestCase):
                     outdir=str(target_path)
                 )
 
-                # Case 2: With version
+                # Case 2: With version should raise exception
                 mock_registry.reset_mock()
                 bundle_v = OrasDagBundle(name="oras_test", image="example.com/demo:1", version="sha256:12345")
-                bundle_v.refresh()
-                
-                target_path_v = Path(tmp) / "dag_bundles" / "oras_test" / "versions" / "sha256:12345"
-                self.assertTrue(target_path_v.exists())
-                # Should pull image@sha... to versions/sha...
-                mock_registry.pull.assert_called_with(
-                    target="example.com/demo:1@sha256:12345",
-                    outdir=str(target_path_v)
-                )
+                with self.assertRaisesRegex(Exception, "Refreshing a specific version is not supported"):
+                     bundle_v.refresh()
 
             finally:
                 if old_home is None:
