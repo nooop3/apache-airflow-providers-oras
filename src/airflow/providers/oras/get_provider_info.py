@@ -13,10 +13,20 @@ def get_provider_info() -> dict:
         "description": "[ORAS](https://oras.land/) - OCI Registry As Storage.",
         "versions": [__version__],
         "integrations": [],
-        "hooks": [],
+        "hooks": [
+            {
+                "integration-name": "ORAS",
+                "python-modules": ["airflow.providers.oras.hooks.oras"],
+            }
+        ],
         "operators": [],
         "sensors": [],
-        "connection-types": [],
+        "connection-types": [
+            {
+                "connection-type": "oras",
+                "hook-class-name": "airflow.providers.oras.hooks.oras.OrasHook",
+            }
+        ],
         "extra-links": [],
         "dag-bundles": [
             {

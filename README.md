@@ -6,13 +6,11 @@ Release: `0.1.0`
 
 ## Provider package
 
-This is a provider package for `oras` provider. All classes for this provider package
-are in `airflow.providers.oras` python package.
+This is a provider package for `oras` provider. All classes for this provider package are in `airflow.providers.oras` python package.
 
 ## Installation
 
-You can install this package on top of an existing Airflow installation (see `Requirements` below
-for the minimum Airflow version supported) via:
+You can install this package on top of an existing Airflow installation (see `Requirements` below for the minimum Airflow version supported) via:
 
 ```bash
 pip install apache-airflow-providers-oras
@@ -23,21 +21,32 @@ pip install apache-airflow-providers-oras
 | Package | Version required |
 |---------|------------------|
 | `apache-airflow` | `>=3.0.0` |
-| `oras` (CLI) | Available on PATH |
+| `oras` (Python SDK) | `>=0.1.0` |
 
 ## Configuration
 
 This provider registers `airflow.providers.oras.bundles.oras.OrasDagBundle`.
+It also includes `airflow.providers.oras.hooks.oras.OrasHook` for registry access.
 
 ### DAG Bundles
 
-To use the ORAS bundle backend, configure the `dag_bundles` section in `airflow.cfg` or via environment variables.
+To use the ORAS bundle backend, configure `dag_bundle_config_list` in `airflow.cfg` (JSON list) or via environment variables.
 
-`airflow.cfg` example:
+`airflow.cfg` JSON example:
 
 ```ini
-[dag_bundles]
-my_oras_bundle = oras
+[dag_processor]
+dag_bundle_config_list = [
+  {
+    "name": "my_oras_bundle",
+    "classpath": "airflow.providers.oras.bundles.oras.OrasDagBundle",
+    "kwargs": {
+      "image": "registry.example.com/dags",
+      "tag": "latest",
+      "subdir": "dags"
+    }
+  }
+]
 ```
 
 ### Bundle Backend Parameters
@@ -47,6 +56,25 @@ The bundle accepts the following parameters:
 - `image` (required): OCI reference or digest to pull.
 - `max_retries`: Retry count on pull failures (default: `0`).
 - `retry_delay`: Seconds between retries (default: `5`).
+
+### Connections
+
+The ORAS hook uses the `oras` connection type. Configure the registry host and optional
+credentials in Airflow Connections.
+
+Connection fields:
+
+- Host: Registry host (for example, `registry.example.com`).
+- Login / Password: Optional basic auth credentials.
+- Schema: Optional `https` or `http` to set `insecure`.
+
+Extras:
+
+- `registry`: Override registry host.
+- `insecure`: Boolean to use HTTP instead of HTTPS.
+- `tls_verify`: Boolean or CA bundle path.
+- `auth_backend`: ORAS auth backend name (default: `token`).
+- `config_path`: Optional ORAS config path to load credentials from.
 
 ## Local development
 
