@@ -5,10 +5,14 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "apache-airflow-providers-oras"
 dynamic = ["version"]
-description = "Apache Airflow provider for ORAS/OCI DAG bundles."
+description = "Apache Airflow provider for ORAS/OCI."
 readme = "README.md"
 requires-python = ">=3.9"
 dependencies = ["apache-airflow>=3.0.0", "oras"]
+
+[project.urls]
+homepage = "https://github.com/nooop3/apache-airflow-providers-oras"
+repository = "https://github.com/nooop3/apache-airflow-providers-oras"
 
 [project.optional-dependencies]
 dev = [

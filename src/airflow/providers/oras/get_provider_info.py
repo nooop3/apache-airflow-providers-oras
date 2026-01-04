@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-from airflow.providers.oras.__version__ import __version__
-
 
 def get_provider_info() -> dict:
     """Return provider info for Airflow."""
@@ -11,7 +9,6 @@ def get_provider_info() -> dict:
         "package-name": "apache-airflow-providers-oras",
         "name": "ORAS",
         "description": "[ORAS](https://oras.land/) - OCI Registry As Storage.",
-        "versions": [__version__],
         "integrations": [],
         "hooks": [
             {
@@ -28,10 +25,10 @@ def get_provider_info() -> dict:
             }
         ],
         "extra-links": [],
-        "dag-bundles": [
+        "bundles": [
             {
-                "name": "oras",
-                "class-name": "airflow.providers.oras.bundles.oras.OrasDagBundle",
+                "integration-name": "oras",
+                "python-modules": "airflow.providers.oras.bundles.oras.OrasDagBundle",
             }
         ],
     }
