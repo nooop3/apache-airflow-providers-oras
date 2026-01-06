@@ -63,6 +63,18 @@ dependencies = [
     "oras>=0.2.38",
 ]
 
+[project.optional-dependencies]
+docker = [
+    "docker",
+]
+ecr = [
+    "boto3",
+]
+all = [
+    "docker",
+    "boto3",
+]
+
 [dependency-groups]
 dev = [
     "apache-airflow",

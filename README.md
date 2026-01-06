@@ -16,6 +16,14 @@ You can install this package on top of an existing Airflow installation (see `Re
 pip install apache-airflow-providers-oras
 ```
 
+Optional dependencies (for ORAS features that need Docker or ECR support):
+
+```bash
+pip install apache-airflow-providers-oras[docker]
+pip install apache-airflow-providers-oras[ecr]
+pip install apache-airflow-providers-oras[all]
+```
+
 ## Requirements
 
 | Package | Version required |

@@ -17,6 +17,8 @@
 
 from __future__ import annotations
 
+import json
+import logging
 from typing import Any, Iterable
 
 import oras.client
@@ -24,14 +26,47 @@ import oras.client
 from airflow.exceptions import AirflowException
 from airflow.sdk import BaseHook
 
+log = logging.getLogger(__name__)
+
 
 class OrasHook(BaseHook):
-    """Interact with OCI registries via oras-py."""
+    """
+    Hook for OCI registries via oras-py.
+
+    :param oras_conn_id: Connection ID for ORAS registry
+    :param registry: Optional registry host override
+    :param insecure: Allow plain HTTP for registry
+    :param tls_verify: TLS verification toggle or CA bundle path
+    :param auth_backend: oras auth backend
+    :param config_path: Optional oras config path
+    """
 
     conn_name_attr = "oras_conn_id"
     default_conn_name = "oras_default"
     conn_type = "oras"
     hook_name = "ORAS"
+
+    @classmethod
+    def get_ui_field_behaviour(cls) -> dict[str, Any]:
+        return {
+            "hidden_fields": ["schema"],
+            "relabeling": {
+                "login": "Username",
+                "host": "Registry",
+                "password": "Password or Token",
+            },
+            "placeholders": {
+                "extra": json.dumps(
+                    {
+                        "registry": "registry.example.com",
+                        "insecure": False,
+                        "tls_verify": True,
+                        "auth_backend": "token",
+                        "config_path": "optional/path/to/config.json",
+                    }
+                )
+            },
+        }
 
     def __init__(
         self,
@@ -43,12 +78,27 @@ class OrasHook(BaseHook):
         config_path: str | None = None,
     ) -> None:
         super().__init__()
+        connection = self.get_connection(oras_conn_id)
+        extras = connection.extra_dejson or {}
+
         self.oras_conn_id = oras_conn_id
         self.registry = registry
         self.insecure = insecure
         self.tls_verify = tls_verify
         self.auth_backend = auth_backend
         self.config_path = config_path
+        self._login = connection.login
+        self._password = connection.password
+
+        self.registry = self.registry or connection.host or extras.get("registry")
+        if not self.registry:
+            raise AirflowException(
+                "ORAS connection requires a registry host or 'registry' extra."
+            )
+        self.insecure = self._resolve_insecure(connection.schema, extras)
+        self.tls_verify = self._resolve_tls_verify(extras)
+        self.auth_backend = self.auth_backend or extras.get("auth_backend") or "token"
+        self.config_path = self.config_path or extras.get("config_path")
 
     def get_conn(self) -> oras.client.OrasClient:
         """Return an authenticated oras-py client."""
@@ -56,38 +106,31 @@ class OrasHook(BaseHook):
 
     def get_client(self) -> oras.client.OrasClient:
         """Create an oras-py client using the Airflow connection."""
-        conn = self.get_connection(self.oras_conn_id)
-        extras = conn.extra_dejson or {}
-
-        registry = self.registry or conn.host or extras.get("registry")
-        if not registry:
-            raise AirflowException("ORAS connection requires a registry host or 'registry' extra.")
-
-        insecure = self._resolve_insecure(conn.schema, extras)
-        tls_verify = self._resolve_tls_verify(extras)
-        auth_backend = self.auth_backend or extras.get("auth_backend") or "token"
-
         client = oras.client.OrasClient(
-            hostname=registry,
-            insecure=insecure,
-            tls_verify=tls_verify,
-            auth_backend=auth_backend,
+            hostname=self.registry,
+            insecure=bool(self.insecure) if self.insecure is not None else False,
+            tls_verify=self.tls_verify,
+            auth_backend=self.auth_backend,
         )
 
-        if conn.login or conn.password:
-            if not conn.login or not conn.password:
+        if self._login or self._password:
+            if not self._login or not self._password:
                 raise AirflowException(
                     "ORAS connection requires both login and password when using basic auth."
                 )
             try:
                 client.login(
-                    username=conn.login,
-                    password=conn.password,
-                    hostname=registry,
-                    tls_verify=tls_verify if isinstance(tls_verify, bool) else True,
+                    username=self._login,
+                    password=self._password,
+                    hostname=self.registry,
+                    tls_verify=self.tls_verify
+                    if isinstance(self.tls_verify, bool)
+                    else True,
                 )
             except Exception as exc:
-                raise AirflowException("Failed to authenticate to ORAS registry.") from exc
+                raise AirflowException(
+                    "Failed to authenticate to ORAS registry."
+                ) from exc
 
         return client
 
@@ -107,7 +150,7 @@ class OrasHook(BaseHook):
             outdir=outdir,
             allowed_media_type=allowed_media_type,
             overwrite=overwrite,
-            config_path=config_path or self._get_config_path(),
+            config_path=config_path or self.config_path,
         )
 
     def push(
@@ -123,14 +166,9 @@ class OrasHook(BaseHook):
         return client.push(
             target=target,
             files=list(files) if files else None,
-            config_path=config_path or self._get_config_path(),
+            config_path=config_path or self.config_path,
             **kwargs,
         )
-
-    def _get_config_path(self) -> str | None:
-        conn = self.get_connection(self.oras_conn_id)
-        extras = conn.extra_dejson or {}
-        return self.config_path or extras.get("config_path")
 
     def _resolve_insecure(self, schema: str | None, extras: dict) -> bool:
         override = self.insecure
