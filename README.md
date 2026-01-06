@@ -77,9 +77,10 @@ dag_bundle_config_list = [
 
 The bundle accepts the following parameters:
 
-- `image` (required): OCI reference or digest to pull.
-- `max_retries`: Retry count on pull failures (default: `0`).
-- `retry_delay`: Seconds between retries (default: `5`).
+- `image` (required): OCI image reference to pull.
+- `tag`: Tag or digest to pull (default: `latest`).
+- `subdir`: Optional subdirectory inside the artifact that contains DAGs.
+- `oras_conn_id`: Airflow connection ID for ORAS (default: `oras_default`).
 
 ## Local development
 
