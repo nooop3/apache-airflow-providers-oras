@@ -129,6 +129,15 @@ class OrasHook(BaseHook):
 
         return client
 
+    def test_connection(self) -> tuple[bool, str]:
+        """Test ORAS connection by initializing the client and optional login."""
+        try:
+            self.get_client()
+        except Exception as exc:
+            log.exception("ORAS connection test failed.")
+            return False, f"Connection test failed: {exc}"
+        return True, "Connection successfully tested."
+
     def pull(
         self,
         *,
