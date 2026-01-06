@@ -60,7 +60,7 @@ class TestOrasDagBundle(unittest.TestCase):
 
     def test_refresh_calls_oras_hook(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
-            bundle = self._make_bundle(Path(tmpdir), tag="v1")
+            bundle = self._make_bundle(Path(tmpdir), tag="v1", disable_refresh=False)
             hook = MagicMock()
             with (
                 patch.object(OrasDagBundle, "lock", _noop_lock),
@@ -77,6 +77,26 @@ class TestOrasDagBundle(unittest.TestCase):
                 outdir=str(Path(tmpdir)),
                 overwrite=True,
             )
+
+    def test_refresh_noop_when_disabled(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            bundle = self._make_bundle(Path(tmpdir))
+            hook = MagicMock()
+            with patch.object(
+                OrasDagBundle, "oras_hook", new_callable=PropertyMock, return_value=hook
+            ):
+                bundle.refresh()
+            hook.pull.assert_not_called()
+
+    def test_initialize_forces_refresh(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            bundle = self._make_bundle(Path(tmpdir), disable_refresh=True)
+            with (
+                patch.object(OrasDagBundle, "lock", _noop_lock),
+                patch.object(bundle, "_refresh") as refresh_mock,
+            ):
+                bundle.initialize()
+            refresh_mock.assert_called_once_with(force=True)
 
     def test_refresh_version_not_supported(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:

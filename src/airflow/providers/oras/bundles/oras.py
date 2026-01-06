@@ -37,6 +37,7 @@ class OrasDagBundle(BaseDagBundle):
     :param tag: Optional tag or digest to pull. If not provided, using the latest version.
     :param subdir: Optional subdirectory within the pulled artifact where the DAGs are located.
     :param oras_conn_id: Airflow connection ID for the ORAS registry.
+    :param disable_refresh: When True, skip periodic refresh() calls after initialize().
     """
 
     supports_versioning = False
@@ -48,6 +49,7 @@ class OrasDagBundle(BaseDagBundle):
         tag: str | None = None,
         subdir: str | None = None,
         oras_conn_id: str = OrasHook.default_conn_name,
+        disable_refresh: bool = True,
         **kwargs,
     ) -> None:
         super().__init__(**kwargs)
@@ -55,6 +57,7 @@ class OrasDagBundle(BaseDagBundle):
         self.tag = tag or "latest"
         self.subdir = subdir
         self.oras_conn_id = oras_conn_id
+        self.disable_refresh = disable_refresh
 
         self.oras_dags_dir: Path = self.base_dir
 
@@ -80,7 +83,7 @@ class OrasDagBundle(BaseDagBundle):
                     f"Local DAGs path: {self.oras_dags_dir} is not a directory."
                 )
 
-            self.refresh()
+            self._refresh(force=True)
 
     def initialize(self) -> None:
         self._initialize()
@@ -124,8 +127,14 @@ class OrasDagBundle(BaseDagBundle):
 
     def refresh(self) -> None:
         """Refresh the DAG bundles by re-pulling from the OCI registry."""
+        self._refresh()
+
+    def _refresh(self, *, force: bool = False) -> None:
         if self.version:
             raise AirflowException("Refreshing a specific version is not supported")
+        if self.disable_refresh and not force:
+            self._log.debug("Refresh disabled for bundle %s", self.name)
+            return
 
         with self.lock():
             if self.oras_hook is None:

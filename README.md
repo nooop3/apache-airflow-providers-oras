@@ -81,6 +81,7 @@ The bundle accepts the following parameters:
 - `tag`: Tag or digest to pull (default: `latest`).
 - `subdir`: Optional subdirectory inside the artifact that contains DAGs.
 - `oras_conn_id`: Airflow connection ID for ORAS (default: `oras_default`).
+- `disable_refresh`: Skip periodic refresh calls after initialize (default: `true`).
 
 ## Local development
 
