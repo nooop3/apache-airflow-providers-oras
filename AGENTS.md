@@ -12,12 +12,6 @@ It sets expectations for scope, code quality, and project standards.
 **Repository:** `apache-airflow-providers-oras`
 **Purpose:** Provide an Apache Airflow provider that integrates ORAS / OCI registries with Airflow.
 
-Initial scope includes:
-
-* An ORAS-based DAG Bundle backend (`airflow.dag_bundles` entrypoint)
-* OCI authentication helpers (ECR, GHCR, Harbor, etc.)
-* Extensible structure for future hooks or operators if needed
-
 This is not an official Apache project, but follows Apache Airflow provider conventions.
 
 ---
@@ -25,7 +19,6 @@ This is not an official Apache project, but follows Apache Airflow provider conv
 ## Goals
 
 * Seamless integration with Airflow 3.x DAG Bundles
-* Production-grade OCI pulls using `oras` or compatible tooling
 * Clear logging, retries, and failure modes
 * Minimal dependencies and fast startup
 * Easy packaging as a pip-installable provider
@@ -54,9 +47,12 @@ Expected layout:
 ```bash
 src/airflow/providers/oras/
 ├── __init__.py
-├── __version__.py
 ├── get_provider_info.py
-└── bundles/
+├── bundles/
+│   ├── __init__.py
+│   └── oras.py
+└── hooks/
+    ├── __init__.py
     └── oras.py
 ```
 
@@ -81,8 +77,6 @@ provider_info = "airflow.providers.oras.get_provider_info:get_provider_info"
 Implementations must:
 
 * Subclass the appropriate Airflow base class
-* Implement `refresh()` to materialize DAGs locally
-* Return a filesystem path containing DAG files
 
 ---
 
@@ -120,9 +114,7 @@ If adding tooling:
 ## Packaging and Versioning
 
 * Use Semantic Versioning: MAJOR.MINOR.PATCH
-* Versions live in `__version__.py`
 * Provider package name: `apache-airflow-providers-oras`
-* Python module: `airflow_provider_oras`
 
 Agents should not:
 
@@ -157,8 +149,6 @@ All new features must include:
 
 * README updates
 * Configuration examples
-* Airflow `airflow.cfg` or Helm snippets
-* Clear usage notes
 
 Docstrings are required for public classes and methods.
 
@@ -168,7 +158,6 @@ Docstrings are required for public classes and methods.
 
 Agents may help define:
 
-* Wheel build pipelines
 * Lint and test jobs
 * Release tagging
 
@@ -176,19 +165,6 @@ But should:
 
 * Keep CI minimal
 * Avoid vendor lock-in where possible
-
----
-
-## Out of Scope (for now)
-
-Unless explicitly requested, agents should avoid adding:
-
-* Kubernetes operators
-* Generic OCI hooks unrelated to DAG bundles
-* Task execution features
-* Non-ORAS registry abstractions
-
-Focus: DAG Bundles via ORAS.
 
 ---
 
@@ -209,7 +185,6 @@ The goal is to make this provider boring, predictable, and rock-solid.
 If you are contributing here:
 
 * You are building an Airflow provider
-* For OCI DAG Bundles
 * With a production-first mindset
 * Keeping things simple, explicit, and testable
 

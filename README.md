@@ -21,12 +21,28 @@ pip install apache-airflow-providers-oras
 | Package | Version required |
 |---------|------------------|
 | `apache-airflow` | `>=3.0.0` |
-| `oras` (Python SDK) | `>=0.1.0` |
+| `oras` (Python SDK) | `>=0.2.8` |
 
 ## Configuration
 
-This provider registers `airflow.providers.oras.bundles.oras.OrasDagBundle`.
-It also includes `airflow.providers.oras.hooks.oras.OrasHook` for registry access.
+### Connections
+
+The ORAS hook uses the `oras` connection type. Configure the registry host and optional
+credentials in Airflow Connections.
+
+Connection fields:
+
+- Host: Registry host (for example, `registry.example.com`).
+- Login / Password: Optional basic auth credentials.
+- Schema: Optional `https` or `http` to set `insecure`.
+
+Extras:
+
+- `registry`: Override registry host.
+- `insecure`: Boolean to use HTTP instead of HTTPS.
+- `tls_verify`: Boolean or CA bundle path.
+- `auth_backend`: ORAS auth backend name (default: `token`).
+- `config_path`: Optional ORAS config path to load credentials from.
 
 ### DAG Bundles
 
@@ -56,25 +72,6 @@ The bundle accepts the following parameters:
 - `image` (required): OCI reference or digest to pull.
 - `max_retries`: Retry count on pull failures (default: `0`).
 - `retry_delay`: Seconds between retries (default: `5`).
-
-### Connections
-
-The ORAS hook uses the `oras` connection type. Configure the registry host and optional
-credentials in Airflow Connections.
-
-Connection fields:
-
-- Host: Registry host (for example, `registry.example.com`).
-- Login / Password: Optional basic auth credentials.
-- Schema: Optional `https` or `http` to set `insecure`.
-
-Extras:
-
-- `registry`: Override registry host.
-- `insecure`: Boolean to use HTTP instead of HTTPS.
-- `tls_verify`: Boolean or CA bundle path.
-- `auth_backend`: ORAS auth backend name (default: `token`).
-- `config_path`: Optional ORAS config path to load credentials from.
 
 ## Local development
 
