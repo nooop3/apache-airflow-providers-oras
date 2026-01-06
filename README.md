@@ -46,7 +46,7 @@ Connection fields:
 
 Extras:
 
-- `registry`: Override registry host.
+- `hostname`: Override registry host.
 - `insecure`: Boolean to use HTTP instead of HTTPS.
 - `tls_verify`: Boolean or CA bundle path.
 - `auth_backend`: ORAS auth backend name (default: `token`).

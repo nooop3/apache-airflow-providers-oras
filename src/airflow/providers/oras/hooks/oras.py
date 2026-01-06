@@ -34,7 +34,7 @@ class OrasHook(BaseHook):
     Hook for OCI registries via oras-py.
 
     :param oras_conn_id: Connection ID for ORAS registry
-    :param registry: Optional registry host override
+    :param hostname: Optional registry host override
     :param insecure: Allow plain HTTP for registry
     :param tls_verify: TLS verification toggle or CA bundle path
     :param auth_backend: oras auth backend
@@ -58,7 +58,7 @@ class OrasHook(BaseHook):
             "placeholders": {
                 "extra": json.dumps(
                     {
-                        "registry": "registry.example.com",
+                        "hostname": "registry.example.com",
                         "insecure": False,
                         "tls_verify": True,
                         "auth_backend": "token",
@@ -71,7 +71,7 @@ class OrasHook(BaseHook):
     def __init__(
         self,
         oras_conn_id: str = default_conn_name,
-        registry: str | None = None,
+        hostname: str | None = None,
         insecure: bool | None = None,
         tls_verify: bool | str | None = None,
         auth_backend: str | None = None,
@@ -82,23 +82,18 @@ class OrasHook(BaseHook):
         extras = connection.extra_dejson or {}
 
         self.oras_conn_id = oras_conn_id
-        self.registry = registry
-        self.insecure = insecure
-        self.tls_verify = tls_verify
-        self.auth_backend = auth_backend
-        self.config_path = config_path
         self._login = connection.login
         self._password = connection.password
 
-        self.registry = self.registry or connection.host or extras.get("registry")
-        if not self.registry:
+        self.hostname = self._resolve_hostname(connection.host, extras, hostname)
+        if not self.hostname:
             raise AirflowException(
-                "ORAS connection requires a registry host or 'registry' extra."
+                "ORAS connection requires a registry host or 'hostname' extra."
             )
-        self.insecure = self._resolve_insecure(connection.schema, extras)
-        self.tls_verify = self._resolve_tls_verify(extras)
-        self.auth_backend = self.auth_backend or extras.get("auth_backend") or "token"
-        self.config_path = self.config_path or extras.get("config_path")
+        self.insecure = self._resolve_insecure(connection.schema, extras, insecure)
+        self.tls_verify = self._resolve_tls_verify(extras, tls_verify)
+        self.auth_backend = self._resolve_auth_backend(extras, auth_backend)
+        self.config_path = self._resolve_config_path(extras, config_path)
 
     def get_conn(self) -> oras.client.OrasClient:
         """Return an authenticated oras-py client."""
@@ -107,7 +102,7 @@ class OrasHook(BaseHook):
     def get_client(self) -> oras.client.OrasClient:
         """Create an oras-py client using the Airflow connection."""
         client = oras.client.OrasClient(
-            hostname=self.registry,
+            hostname=self.hostname,
             insecure=bool(self.insecure) if self.insecure is not None else False,
             tls_verify=self.tls_verify,
             auth_backend=self.auth_backend,
@@ -122,7 +117,7 @@ class OrasHook(BaseHook):
                 client.login(
                     username=self._login,
                     password=self._password,
-                    hostname=self.registry,
+                    hostname=self.hostname,
                     tls_verify=self.tls_verify
                     if isinstance(self.tls_verify, bool)
                     else True,
@@ -170,19 +165,35 @@ class OrasHook(BaseHook):
             **kwargs,
         )
 
-    def _resolve_insecure(self, schema: str | None, extras: dict) -> bool:
-        override = self.insecure
+    @staticmethod
+    def _resolve_hostname(
+        host: str | None, extras: dict, override: str | None
+    ) -> str | None:
+        return override or host or extras.get("hostname")
+
+    def _resolve_insecure(
+        self, schema: str | None, extras: dict, override: bool | None
+    ) -> bool:
         if override is None:
             override = self._as_bool(extras.get("insecure"))
         if override is None and schema:
             override = schema.lower() == "http"
         return bool(override) if override is not None else False
 
-    def _resolve_tls_verify(self, extras: dict) -> bool | str:
-        override = self.tls_verify
+    def _resolve_tls_verify(
+        self, extras: dict, override: bool | str | None
+    ) -> bool | str:
         if override is None:
             override = extras.get("tls_verify", True)
         return self._normalize_tls_verify(override)
+
+    @staticmethod
+    def _resolve_auth_backend(extras: dict, override: str | None) -> str:
+        return override or extras.get("auth_backend") or "token"
+
+    @staticmethod
+    def _resolve_config_path(extras: dict, override: str | None) -> str | None:
+        return override or extras.get("config_path")
 
     @staticmethod
     def _as_bool(value: Any) -> bool | None:
