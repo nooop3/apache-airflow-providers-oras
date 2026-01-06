@@ -77,8 +77,9 @@ The bundle accepts the following parameters:
 
 ```bash
 # Create virtual environment
+export UV_NO_SOURCES=1
 uv venv
-uv sync --extra dev
+uv sync --no-sources
 uv pip install -e .
 
 # Run tests
