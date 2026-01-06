@@ -111,22 +111,36 @@ class TestOrasHook(unittest.TestCase):
             tls_verify=True,
         )
 
+    @patch("airflow.providers.oras.hooks.oras.socket.create_connection")
     @patch("airflow.providers.oras.hooks.oras.log")
     @patch.object(OrasHook, "get_client")
     def test_test_connection_failure(
-        self, get_client_mock: MagicMock, log_mock: MagicMock
+        self,
+        get_client_mock: MagicMock,
+        log_mock: MagicMock,
+        create_connection_mock: MagicMock,
     ) -> None:
         get_client_mock.side_effect = AirflowException("boom")
         hook = OrasHook.__new__(OrasHook)
+        hook.hostname = "registry.example.com"
+        hook.insecure = False
         success, message = hook.test_connection()
         self.assertFalse(success)
         self.assertIn("Connection test failed", message)
         log_mock.exception.assert_called_once()
 
+    @patch("airflow.providers.oras.hooks.oras.socket.create_connection")
     @patch.object(OrasHook, "get_client")
-    def test_test_connection_success(self, get_client_mock: MagicMock) -> None:
+    def test_test_connection_success(
+        self, get_client_mock: MagicMock, create_connection_mock: MagicMock
+    ) -> None:
         get_client_mock.return_value = MagicMock()
         hook = OrasHook.__new__(OrasHook)
+        hook.hostname = "registry.example.com"
+        hook.insecure = False
         success, message = hook.test_connection()
         self.assertTrue(success)
         self.assertEqual(message, "Connection successfully tested.")
+        create_connection_mock.assert_called_once_with(
+            ("registry.example.com", 443), timeout=5
+        )

@@ -19,6 +19,7 @@ from __future__ import annotations
 
 import json
 import logging
+import socket
 from typing import Any, Iterable
 
 import oras.client
@@ -132,6 +133,10 @@ class OrasHook(BaseHook):
     def test_connection(self) -> tuple[bool, str]:
         """Test ORAS connection by initializing the client and optional login."""
         try:
+            if self.hostname:
+                port = 80 if self.insecure else 443
+                with socket.create_connection((self.hostname, port), timeout=5):
+                    pass
             self.get_client()
         except Exception as exc:
             log.exception("ORAS connection test failed.")
