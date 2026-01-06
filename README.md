@@ -77,7 +77,7 @@ dag_bundle_config_list = [
 
 The bundle accepts the following parameters:
 
-- `image` (required): OCI image reference to pull.
+- `image` (required): OCI image reference to pull. If it omits the registry hostname, the connection hostname is prefixed.
 - `tag`: Tag or digest to pull (default: `latest`).
 - `subdir`: Optional subdirectory inside the artifact that contains DAGs.
 - `oras_conn_id`: Airflow connection ID for ORAS (default: `oras_default`).

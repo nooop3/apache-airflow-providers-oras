@@ -141,17 +141,30 @@ class OrasDagBundle(BaseDagBundle):
                 raise AirflowException(
                     "ORAS hook is unavailable; cannot refresh DAG bundle."
                 )
+            image = self._ensure_image_has_hostname(self.image, self.oras_hook.hostname)
             self._log.debug(
                 "Pulling DAG bundle from %s:%s to %s",
-                self.image,
+                image,
                 self.tag,
                 self.oras_dags_dir,
             )
             self.oras_hook.pull(
-                target=f"{self.image}:{self.tag}",
+                target=f"{image}:{self.tag}",
                 outdir=str(self.oras_dags_dir),
                 overwrite=True,
             )
+
+    @staticmethod
+    def _ensure_image_has_hostname(image: str, hostname: str | None) -> str:
+        if not hostname:
+            raise AirflowException(
+                "ORAS hostname is required to build image reference."
+            )
+        if image.startswith(f"{hostname}/"):
+            return image
+        if hostname in image:
+            return image
+        return f"{hostname}/{image}"
 
     def view_url_template(self) -> str | None:
         """Return a URL template to view the bundle in a registry web UI, if available."""

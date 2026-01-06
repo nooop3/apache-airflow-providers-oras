@@ -62,6 +62,7 @@ class TestOrasDagBundle(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmpdir:
             bundle = self._make_bundle(Path(tmpdir), tag="v1", disable_refresh=False)
             hook = MagicMock()
+            hook.hostname = "registry.example.com"
             with (
                 patch.object(OrasDagBundle, "lock", _noop_lock),
                 patch.object(
@@ -87,6 +88,27 @@ class TestOrasDagBundle(unittest.TestCase):
             ):
                 bundle.refresh()
             hook.pull.assert_not_called()
+
+    def test_refresh_prefixes_hostname(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            bundle = self._make_bundle(Path(tmpdir), image="dags", disable_refresh=False)
+            hook = MagicMock()
+            hook.hostname = "registry.example.com"
+            with (
+                patch.object(OrasDagBundle, "lock", _noop_lock),
+                patch.object(
+                    OrasDagBundle,
+                    "oras_hook",
+                    new_callable=PropertyMock,
+                    return_value=hook,
+                ),
+            ):
+                bundle.refresh()
+            hook.pull.assert_called_once_with(
+                target="registry.example.com/dags:latest",
+                outdir=str(Path(tmpdir)),
+                overwrite=True,
+            )
 
     def test_initialize_forces_refresh(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
