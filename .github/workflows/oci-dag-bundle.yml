@@ -46,4 +46,4 @@ jobs:
           mkdir -p "$bundle_dir/$target_dir"
           cp -a "$source_dir/." "$bundle_dir/$target_dir/"
 
-          (cd "$bundle_dir" && oras push "$target" "$target_dir")
+          (cd "$bundle_dir" && oras push --annotation org.opencontainers.image.title=oci-dag-bundle "$target" "$target_dir")
