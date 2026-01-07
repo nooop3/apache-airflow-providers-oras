@@ -72,7 +72,7 @@ apache-airflow-providers-oras package
 `OCI Registry As Storage (ORAS) <https://oras.land/>`__
 
 
-Release: 0.0.3
+Release: 0.0.4
 
 Provider package
 ----------------
