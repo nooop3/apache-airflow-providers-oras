@@ -33,7 +33,7 @@ jobs:
 
           bundle_tag="${TAG_NAME#oci-}"
           target="${IMAGE_NAME}:${bundle_tag}"
-          source_dr="examples/dags/oci"
+          source_dir="examples/dags/oci"
           target_dir="dag-bundles/oci-examples"
 
           mapfile -d '' files < <(find "$source_dir" -type f -print0)
