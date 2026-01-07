@@ -61,16 +61,16 @@ To use the ORAS bundle backend, configure `dag_bundle_config_list` in `airflow.c
 ```ini
 [dag_processor]
 dag_bundle_config_list = [
-  {
-    "name": "oci-dag-bundles",
-    "classpath": "airflow.providers.oras.bundles.oras.OrasDagBundle",
-    "kwargs": {
-      "image": "nooop3/apache-airflow-providers-oras/oci-dag-bundles",
-      "tag": "v0.0.1",
-      "subdir": "dag-bundles/oci-examples"
+    {
+      "name": "oci-dag-bundles",
+      "classpath": "airflow.providers.oras.bundles.oras.OrasDagBundle",
+      "kwargs": {
+        "image": "nooop3/apache-airflow-providers-oras/oci-dag-bundles",
+        "tag": "v0.0.1",
+        "subdir": "dag-bundles/oci-examples"
+      }
     }
-  }
-]
+  ]
 ```
 
 ### Bundle Backend Parameters

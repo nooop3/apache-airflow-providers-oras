@@ -33,15 +33,17 @@ jobs:
 
           bundle_tag="${TAG_NAME#oci-}"
           target="${IMAGE_NAME}:${bundle_tag}"
+          source_dr="examples/dags/oci"
+          target_dir="dag-bundles/oci-examples"
 
-          mapfile -d '' files < <(find examples/dags/oci -type f -print0)
+          mapfile -d '' files < <(find "$source_dir" -type f -print0)
           if [[ ${#files[@]} -eq 0 ]]; then
-            echo "No files found in examples/dags/oci/."
+            echo "No files found in $source_dir ."
             exit 1
           fi
 
           bundle_dir="$(mktemp -d)"
-          mkdir -p "$bundle_dir/dag-bundles/oci-examples"
-          cp -a examples/dags/oci/. "$bundle_dir/dag-bundles/oci-examples/"
+          mkdir -p "$bundle_dir/$target_dir"
+          cp -a "$source_dir/." "$bundle_dir/$target_dir/"
 
-          (cd "$bundle_dir" && oras push "$target" .)
+          (cd "$bundle_dir" && oras push "$target" $target_dir")
