@@ -4,10 +4,9 @@ from pathlib import Path
 from pprint import pformat
 
 import pendulum
-from airflow.models.dag import DAG
 from airflow.models.dagrun import DagRun
 from airflow.models.taskinstance import TaskInstance
-from airflow.sdk import dag, task
+from airflow.sdk import DAG, dag, task
 
 
 @dag(
