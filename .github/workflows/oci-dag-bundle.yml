@@ -40,4 +40,8 @@ jobs:
             exit 1
           fi
 
-          oras push "$target" examples/dags/oci:dag-bundles/oci-examples
+          bundle_dir="$(mktemp -d)"
+          mkdir -p "$bundle_dir/dag-bundles/oci-examples"
+          cp -a examples/dags/oci/. "$bundle_dir/dag-bundles/oci-examples/"
+
+          (cd "$bundle_dir" && oras push "$target" .)
