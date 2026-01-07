@@ -66,7 +66,7 @@ dag_bundle_config_list = [
       "classpath": "airflow.providers.oras.bundles.oras.OrasDagBundle",
       "kwargs": {
         "image": "nooop3/apache-airflow-providers-oras/oci-dag-bundles",
-        "tag": "v0.0.1",
+        "tag": "v0.0.2",
         "subdir": "dag-bundles/oci-examples"
       }
     }
