@@ -183,4 +183,6 @@ class OrasDagBundle(BaseDagBundle):
         This method is deprecated and will be removed when the minimum supported Airflow version is 3.1.
         Use `view_url_template` instead.
         """
+        if version:
+            raise AirflowException("View URL for specific versions is not supported")
         return self.view_url_template()

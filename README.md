@@ -62,12 +62,12 @@ To use the ORAS bundle backend, configure `dag_bundle_config_list` in `airflow.c
 [dag_processor]
 dag_bundle_config_list = [
   {
-    "name": "my_oras_bundle",
+    "name": "oci-dag-bundles",
     "classpath": "airflow.providers.oras.bundles.oras.OrasDagBundle",
     "kwargs": {
-      "image": "registry.example.com/dags",
-      "tag": "latest",
-      "subdir": "dags"
+      "image": "nooop3/apache-airflow-providers-oras/oci-dag-bundles",
+      "tag": "v0.0.1",
+      "subdir": "dag-bundles/oci-examples"
     }
   }
 ]
